@@ -1,9 +1,5 @@
-import Items from '../components/Items';
-
-const Home = props => (
-  <div>
-    <Items />
-  </div>
-);
+// Since the Home page and the Items page will be exactly the same,
+// we can just import the Home page here and export it immediately
+import Home from './items';
 
 export default Home;

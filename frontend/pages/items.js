@@ -1,5 +1,9 @@
-// Since the Home page and the Items page will be exactly the same,
-// we can just import the Home page here and export it immediately
-import Home from './index';
+import Items from '../components/Items';
 
-export default Home;
+const Shop = props => (
+  <div>
+    <Items page={parseFloat(props.query.page) || 1} />
+  </div>
+);
+
+export default Shop;
