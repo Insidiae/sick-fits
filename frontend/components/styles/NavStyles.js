@@ -13,6 +13,8 @@ const NavStyles = styled.ul`
     align-items: center;
     position: relative;
     text-transform: uppercase;
+    color: ${props => props.theme.black};
+    font-family: inherit;
     font-weight: 900;
     font-size: 1em;
     background: none;
