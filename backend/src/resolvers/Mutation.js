@@ -1,5 +1,8 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { randomBytes } = require('crypto');
+const { promisify } = require('util');
+const { transport, makeANiceEmail } = require('../mail');
 
 const Mutation = {
   async createItem(parent, args, ctx, info) {
@@ -95,6 +98,74 @@ const Mutation = {
   signout(parent, args, ctx, info) {
     ctx.response.clearCookie('token');
     return { message: 'Signed out!' };
+  },
+
+  async requestReset(parent, args, ctx, info) {
+    // Check if the user with the provided email exists
+    const user = await ctx.db.query.user({ where: { email: args.email } });
+    if(!user) {
+      throw new Error(`No such user found for email: ${args.email}`);
+    }
+    // Set a reset token and expiry for that user
+    const randomBytesPromisified = promisify(randomBytes);
+    const resetToken = (await randomBytesPromisified(20)).toString('hex');
+    const resetTokenExpiry = Date.now() + 3600000; // expires in 1hr
+    const res = await ctx.db.mutation.updateUser({
+      where: {email: args.email},
+      data: { resetToken, resetTokenExpiry },
+    });
+    // Email them that reset token
+    const mailRes = await transport.sendMail({
+      from: 'placeholder@email.net',
+      to: user.email,
+      subject: 'Your Password Reset Token - Sick Fits',
+      html: makeANiceEmail(`
+        Your password reset token is here!
+
+        <a href="${process.env.FRONTEND_URL}/reset?resetToken=${resetToken}">Click here to reset your password</a>
+      `)
+    });
+
+    // Return some message for the frontend
+    return { message: 'Password reset request successful!' };
+  },
+
+  async resetPassword(parent, {resetToken, password, confirmPassword}, ctx, info) {
+    // Check if the passwords match
+    if(password !== confirmPassword) {
+      throw new Error('Your passwords do not match. Please try again');
+    }
+    // Check if the reset token is valid and not expired
+    // (NOTE: the users query actually gets an array of users.
+    // We just use destructuring to get the first returned user.)
+    const [user] = await ctx.db.query.users({
+      where: {
+        resetToken,
+        resetTokenExpiry_gte: Date.now() - 3600000,
+      }
+    });
+    if(!user) {
+      throw new Error('This token is either invalid or expired.');
+    }
+    // Hash the new password and remove old resetToken fields
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const updatedUser = await ctx.db.mutation.updateUser({
+      where: { email: user.email },
+      data: {
+        password: hashedPassword,
+        resetToken: null,
+        resetTokenExpiry: null,
+      }
+    })
+    // Generate JWT
+    const token = jwt.sign({userId: updatedUser.id}, process.env.APP_SECRET);
+    // Set JWT cookie
+    ctx.response.cookie('token', token, {
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 24 * 365 // 1 year cookie
+    });
+    // Return the new user
+    return updatedUser;
   }
 };
 
