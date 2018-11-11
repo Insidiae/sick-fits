@@ -25,7 +25,7 @@ type Item {
   largeImage: String
   price: Int!
   # NOTE: the DateTime type is only available if you're using Prisma (or any other interface that has the DateTyme type)
-  createdAt: DateTime!
-  updatedAt: DateTime!
-  # user: User!
+  # createdAt: DateTime!
+  # updatedAt: DateTime!
+  user: User!
 }

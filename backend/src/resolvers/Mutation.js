@@ -3,13 +3,23 @@ const jwt = require('jsonwebtoken');
 const { randomBytes } = require('crypto');
 const { promisify } = require('util');
 const { transport, makeANiceEmail } = require('../mail');
+const { hasPermission } = require('../utils');
 
 const Mutation = {
   async createItem(parent, args, ctx, info) {
-    // TODO: check if user is logged in
+    // Check if user is logged in
+    if(!ctx.request.userId) {
+      throw new Error('You must be logged in to do that!');
+    }
 
     const item = await ctx.db.mutation.createItem({
       data: {
+        // This creates a relationship between the user and the created item
+        user: {
+          connect: {
+            id: ctx.request.userId,
+          },
+        },
         ...args
       }
     }, info);
@@ -37,9 +47,13 @@ const Mutation = {
   async deleteItem(parent, args, ctx, info) {
     const where = { id: args.id };
     // Find the item
-    const item = await ctx.db.query.item({ where }, `{ id title }`);
+    const item = await ctx.db.query.item({ where }, `{ id title user { id } }`);
     // Check if the user owns that item, or has the permissions
-    // TODO
+    const ownsItem = item.user.id === ctx.request.userId;
+    const hasPermissions = ctx.request.user.permissions.some(permission => ['ADMIN', 'ITEMDELETE'].includes(permission));
+    if (!ownsItem && !hasPermissions) {
+      throw new Error('You do not have permission to delete this item.');
+    }
     // Delete the item
     return ctx.db.mutation.deleteItem({ where }, info);
   },
@@ -166,6 +180,37 @@ const Mutation = {
     });
     // Return the new user
     return updatedUser;
+  },
+  async updatePermissions(parent, args, ctx, info) {
+    // Check if user is logged in
+    if(!ctx.request.userId) {
+      throw new Error('You must be logged in to do that!');
+    }
+    // Query the current user
+    const currentUser = await ctx.db.query.user(
+      {
+        where: {
+          id: ctx.request.userId,
+        }
+      },
+      info
+    );
+    // Check if the user has permissions to do this
+    hasPermission(currentUser, ['ADMIN', 'PERMISSIONUPDATE']);
+    // Update the permissions
+    return ctx.db.mutation.updateUser(
+      {
+        data: {
+          permissions: {
+            set: args.permissions,
+          },
+        },
+        where: {
+          id: args.userId,
+        },
+      },
+      info
+    );
   }
 };
 
