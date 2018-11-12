@@ -15,6 +15,7 @@ type User {
   resetToken: String
   resetTokenExpiry: String
   permissions: [Permission]
+  cart: [CartItem!]!
 }
 
 type Item {
@@ -27,5 +28,12 @@ type Item {
   # NOTE: the DateTime type is only available if you're using Prisma (or any other interface that has the DateTyme type)
   # createdAt: DateTime!
   # updatedAt: DateTime!
+  user: User!
+}
+
+type CartItem {
+  id: ID! @unique
+  quantity: Int! @default(value: 1)
+  item: Item
   user: User!
 }
