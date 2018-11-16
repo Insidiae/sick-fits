@@ -54,7 +54,6 @@ class CreateItem extends Component {
       });
 
     const file = await res.json();
-    console.log(file);
     this.setState({
       image: file.secure_url,
       largeImage: file.eager[0].secure_url
@@ -71,17 +70,19 @@ class CreateItem extends Component {
     return (
       <Mutation mutation={CREATE_ITEM_MUTATION} variables={this.state}>
         {(createItem, { loading, error }) => (
-          <Form onSubmit={async (e) => {
-            // stop the from from actually submitting
-            e.preventDefault();
-            // call the mutation
-            const res = await createItem();
-            // redirect to the newly-created item's page
-            Router.push({
-              pathname: '/item',
-              query: { id: res.data.createItem.id },
-            });
-          }}
+          <Form
+            data-test="form"
+            onSubmit={async (e) => {
+              // stop the from from actually submitting
+              e.preventDefault();
+              // call the mutation
+              const res = await createItem();
+              // redirect to the newly-created item's page
+              Router.push({
+                pathname: '/item',
+                query: { id: res.data.createItem.id },
+              });
+            }}
           >
             <Error error={error} />
             <fieldset disabled={loading} aria-busy={loading}>

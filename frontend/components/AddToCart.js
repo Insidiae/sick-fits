@@ -23,7 +23,7 @@ class AddToCart extends Component {
       >
         {(addToCart, { loading }) => (
           <button type="button" onClick={addToCart} disabled={loading}>
-            Add{loading && 'ing'} To Cart {loading ? '...' : '🛒'}
+            Add{loading && 'ing'} To Cart{loading ? '...' : ' 🛒'}
           </button>
         )}
       </Mutation>
@@ -32,3 +32,4 @@ class AddToCart extends Component {
 }
 
 export default AddToCart;
+export { ADD_TO_CART_MUTATION };
